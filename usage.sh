@@ -49,10 +49,29 @@ echo "$USAGE_JSON" | jq -r '
       (if obj.resets_at then " (resets \(obj.resets_at))" else "" end)
     end;
 
+  # Curated buckets, always shown in this order (even when null).
+  ["five_hour", "seven_day", "seven_day_opus", "seven_day_sonnet",
+   "seven_day_cowork", "seven_day_omelette"] as $known |
+
   fmt("5-hour       "; .five_hour),
   fmt("7-day total  "; .seven_day),
   fmt("7-day Opus   "; .seven_day_opus),
   fmt("7-day Sonnet "; .seven_day_sonnet),
   fmt("7-day Cowork "; .seven_day_cowork),
-  fmt("7-day Omelet "; .seven_day_omelette)
+  fmt("7-day Omelet "; .seven_day_omelette),
+
+  # Any other non-null utilization bucket the API adds later shows up here
+  # automatically, so new model codenames are not silently dropped.
+  ( to_entries[]
+    | select(.key != "extra_usage")
+    | select(.value | type == "object" and has("utilization"))
+    | select(.value.utilization != null)
+    | select([.key] | inside($known) | not)
+    | fmt(.key; .value) ),
+
+  # Paid extra usage has a different shape (credits, not utilization-only).
+  ( .extra_usage
+    | select(. != null)
+    | select(.is_enabled)
+    | "Extra usage  : \(.utilization)% (\(.used_credits)/\(.monthly_limit) \(.currency))" )
 '
