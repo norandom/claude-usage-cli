@@ -49,6 +49,13 @@ echo "$USAGE_JSON" | jq -r '
       (if obj.resets_at then " (resets \(obj.resets_at))" else "" end)
     end;
 
+  # Credits are denominated in cents; render as a 2-decimal currency amount.
+  def money:
+    (. / 100) as $e
+    | ($e | floor) as $whole
+    | (($e - $whole) * 100 | round) as $cents
+    | "\($whole).\(if $cents < 10 then "0" else "" end)\($cents)";
+
   # Curated buckets, always shown in this order (even when null).
   ["five_hour", "seven_day", "seven_day_opus", "seven_day_sonnet",
    "seven_day_cowork", "seven_day_omelette"] as $known |
@@ -73,5 +80,5 @@ echo "$USAGE_JSON" | jq -r '
   ( .extra_usage
     | select(. != null)
     | select(.is_enabled)
-    | "Extra usage  : \(.utilization)% (\(.used_credits)/\(.monthly_limit) \(.currency))" )
+    | "Extra usage  : \(.utilization)% (\(.used_credits | money)/\(.monthly_limit | money) \(.currency))" )
 '
