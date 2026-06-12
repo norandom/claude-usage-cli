@@ -41,12 +41,17 @@ ORG_NAME="$(claude_api organizations | jq -r --arg u "$ORG_UUID" '
 printf 'Org: %s\n     %s\n\n' "$ORG_NAME" "$ORG_UUID"
 
 echo "$USAGE_JSON" | jq -r '
+  # Convert a UTC ISO-8601 timestamp to local system time.
+  def localts:
+    sub("\\.[0-9]+"; "") | sub("\\+00:00$"; "Z")
+    | fromdateiso8601 | strflocaltime("%Y-%m-%d %H:%M %Z");
+
   def fmt(name; obj):
     if obj == null or obj.utilization == null then
       "\(name): -"
     else
       "\(name): \(obj.utilization)%" +
-      (if obj.resets_at then " (resets \(obj.resets_at))" else "" end)
+      (if obj.resets_at then " (resets \(obj.resets_at | localts))" else "" end)
     end;
 
   # Credits are denominated in cents; render as a 2-decimal currency amount.
